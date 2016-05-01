@@ -1,0 +1,115 @@
+#Item_Factura
+Item_Nro_Factura numeric(18,0) (  a Factura_Nro en #Factura) (PK)
+Item_Detalle nvarchar(255) (PK)
+Item_Monto numeric(18,2)
+Item_Cantidad numeric(18,0)
+-------------------------------------
+#Factura
+Factura_Nro numeric(18,0)  (PK)
+Factura_Fecha datetime
+Factura_Total numeric(18,2)
+Forma_Pago_Desc nvarchar(255)
+Factura_Username numeric(18,0) (FK a Usuario_username en #Usuario)
+--------------------------------------
+#Calificacion
+Calificacion_Codigo numeric(18,0) (PK)
+Calificacion_Codigo_Publicacion numeric(18,0) (FK a Publicacion_Cod en #Publicacion)
+Calificacion_Cant_Estrellas numeric(18,0)
+Calificacion_Descripcion nvarchar(255)
+---------------------------------------
+#Publicacion
+Publicacion_Cod numeric(18,0) (PK)
+Publicacion_Descripcion nvarchar(255)
+Publicacion_Stock numeric(18,0)
+Publicacion_Fecha_Inicio datetime
+Publicacion_Fecha_Venc datetime
+Publicacion_Precio numeric(18,2)
+Publicacion_Tipo nvarchar(255)
+Publicacion_Visibilidad_Cod numeric(18,0) (FK a Publicacion_Visibilidad_Cod en #Publicacion_visibilidad)
+Publicacion_Estado nvarchar(255)
+Publicacion_Envio bool
+Publicacion_Preguntas bool
+Publicacion_Username numeric(18,0)  (FK Usuario_username en #usuario)
+----------------------------------------
+#Publicacion_Visibilidad
+Publicacion_Visibilidad_Cod numeric(18,0) (PK)
+Publicacion_Visibilidad_Desc nvarchar(255)
+Publicacion_Visibilidad_Precio numeric(18,2)
+Publicacion_Visibilidad_Porcentaje numeric(18,2)
+------------------------------------------------
+#Cliente
+Cli_Dni numeric(18,0) (PK)
+Cli_Tipo_Documento nvarchar(255) (PK)
+Cli_Apellido nvarchar(255)
+Cli_Nombre nvarchar(255)
+Cli_Fecha_Nac datetime
+Cli_Fecha_Creacion datetime
+Cli_Detalle_Codigo numeric(18,0) (FK a Detalle_Codigo en #Detalle_Persona)
+-----------------------------------------------
+#Empresa
+Empresa_Razon_Social nvarchar(255) (PK)
+Empresa_Cuit nvarchar(255) (PK)
+Empresa_Fecha_Creacion datetime
+Empresa_Nombre_Contacto nvarchar(255)
+Empresa_Rubro nvarchar(255)
+Empresa_Detalle_Codigo numeric(18,0) (FK a Detalle_Codigo en #Detalle_Persona)
+----------------------------------------------
+#Detalle_Persona
+Detalle_Codigo numeric(18,0) (PK)
+Detalle_Telefono nvarchar(255)
+Detalle_Mail nvarchar(255)
+Detalle_Dom_Calle nvarchar(255)
+Detalle_Nro_Calle numeric(18,0)
+Detalle_Piso numeric(18,0)
+Detalle_Depto nvarchar(50)
+Detalle_Cod_Postal nvarchar(50)
+Detalle_Localidad nvarchar(255)
+-----------------------------------------
+#Oferta_Publicacion
+Oferta_Publicacion numeric(18,0) (PK) (FK a Cod_Publicacion en #Publicacion)
+Oferta_Cod_Cliente numeric(18,0) (PK) (FK a Cod_Cliente en #Cliente)
+Oferta_Fecha datetime (PK)
+Oferta_Monto numeric(18,0)
+-----------------------------------------
+#Compra_Publicacion
+Compra_Publicacion_Cod numeric(18,0) (PK) (FK a Publicacion_Cod en #Publicacion)
+Compra_Fecha datetime (PK)
+Compra_Cantidad numeric(18,0)
+Compra_Cod_Cliente numeric(18,0) (PK) (FK a Cod_Cliente en #Cliente )
+----------------------------------------------
+#Rol
+Rol_Codigo numeric(18,0) (PK)
+Rol_Nombre nvarchar(255)
+Rol_Habilitado bool
+-------------------------------------------
+#Rol_Conjunto_Funcionalidad
+Rol_Codigo numeric(18,0) (pk) (fk a Rol_Codigo en #Rol)
+Funcionalidad_Rol_Codigo numeric(18,0) (pk)  (fk a Funcionalidad_Rol_Codigo a #Funcionalidad_Rol)
+(Puede tener una descripcion)
+------------------------------------------
+#Funcionalidad_Rol
+Funcionalidad_Rol_Codigo numeric(18,0) (PK)
+Funcionalidad_Rol_Descripcion nvarchar(255)
+------------------------------------------
+#Usuario
+Usuario_username nvarchar(255) (PK)
+Usuario_password nvarchar(255)
+Usuario_habilitado bool (por errores de password)
+Usuario_intentos_fallidos numeric(1,0)
+Usuario_Tipo nvarchar(50) --Si es empresa, cliente
+Usuario_Detalle_Codigo numeric(18,0) (FK a Detalle_Codigo en Detalle_Persona)
+Usuario_Activo bool (por baja logica)
+------------------------------------------
+#Usuario_Rol
+Usuario_username nvarchar(255) (PK)(FK a Usuario_username en #Usuario)
+Usuario_Rol_Codigo numeric(18,0) (PK) (FK a Rol_Codigo en #Rol)
+------------------------------------------
+#Publicacion_Rubro
+Publicacion_Cod numeric(18,0) (PK) (FK a Publicacion_Cod en #Publicacion)
+Rubro_Codigo numeric(18,0) (PK) (FK a Rubro_Codigo en #Rubro)
+------------------------------------------
+#Rubro
+Rubro_Codigo numeric(18,0) (PK)
+Rubro_Descripcion_Corta nvarchar(255)
+Rubro_Descripcion_Larga nvarchar(255)
+------------------------------------------
