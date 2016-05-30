@@ -146,34 +146,21 @@ primary key (Empresa_Razon_Social,Empresa_Cuit)
 go
 
 create table MASTERFILE.Oferta_Publicacion (
+Oferta_Cod numeric(18,0) primary key,
 Oferta_Publicacion numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Publicacion(Publicacion_Cod),
-Oferta_Cli_Dni numeric(18,0) NOT NULL,
-Oferta_Cli_Tipo_Documento nvarchar(255) NOT NULL ,
+Oferta_Usuario_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Usuario(Usuario_Cod),
 Oferta_Fecha datetime NOT NULL,
-Oferta_Monto numeric(18,2) NOT NULL,
-PRIMARY KEY (Oferta_Publicacion,Oferta_Cli_Dni,Oferta_Cli_Tipo_Documento,Oferta_Fecha)
+Oferta_Monto numeric(18,2) NOT NULL
 );
-go
-
-ALTER TABLE MASTERFILE.Oferta_Publicacion 
-  ADD CONSTRAINT FK_Oferta_Cliente
-  FOREIGN KEY (Oferta_Cli_Dni,Oferta_Cli_Tipo_Documento) REFERENCES MASTERFILE.Cliente(Cli_Dni, Cli_Tipo_Documento);
 go
 
 create table MASTERFILE.Compra_Publicacion (
+Compra_Cod numeric(18,0) primary key,
 Compra_Publicacion_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Publicacion(Publicacion_Cod) ,
-Compra_Cli_Dni numeric(18,0) NOT NULL,
-Compra_Cli_Tipo_Documento nvarchar(255) NOT NULL,
 Compra_Usuario_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Usuario(Usuario_Cod),
 Compra_Fecha datetime NOT NULL,
-Compra_Cantidad numeric(18,0) NOT NULL,
-PRIMARY KEY (Compra_Publicacion_Cod,Compra_Cli_Dni,Compra_Cli_Tipo_Documento,Compra_Fecha)
+Compra_Cantidad numeric(18,0) NOT NULL
 );
-go
-
-ALTER TABLE MASTERFILE.Compra_Publicacion 
-  ADD CONSTRAINT FK_Compra_Cliente
-  FOREIGN KEY (Compra_Cli_Dni,Compra_Cli_Tipo_Documento) REFERENCES MASTERFILE.Cliente(Cli_Dni, Cli_Tipo_Documento);
 go
 
 create table MASTERFILE.Calificacion (
