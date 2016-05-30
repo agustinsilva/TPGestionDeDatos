@@ -1,0 +1,10 @@
+validar log in
+(funcionalidad adicional, cleanear los intentos fallidos en caso de log in valido)
+ingreso: username, password
+retorno: usuario
+
+agregar intento fallido
+ingreso: username
+retorno: void
+
+
