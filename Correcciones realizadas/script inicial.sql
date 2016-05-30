@@ -32,8 +32,9 @@ go
 
 create table MASTERFILE.Detalle_Persona (
 Detalle_Cod numeric(18,0) PRIMARY KEY,
-Detalle_Telefono nvarchar(255) NOT NULL,
+Detalle_Telefono nvarchar(50) NOT NULL,
 Detalle_Mail nvarchar(255) NOT NULL,
+Detalle_Tipo_Persona nvarchar(50) NOT NULL,
 Detalle_Residencia_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Residencia(Residencia_Cod)
 );
 go
@@ -60,11 +61,10 @@ go
 
 create table MASTERFILE.Usuario (
 Usuario_Cod numeric(18,0) IDENTITY(1,1) PRIMARY KEY ,
-Usuario_Username nvarchar(255)  ,
+Usuario_Username nvarchar(255) NOT NULL,
 Usuario_Password nvarchar(255) NOT NULL,
 Usuario_Habilitado bit NOT NULL,
 Usuario_Intentos_Fallidos numeric(1,0) NOT NULL,
-Usuario_Tipo_Persona nvarchar(50) NOT NULL,
 Usuario_Detalle_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES  MASTERFILE.Detalle_Persona(Detalle_Cod),
 Usuario_Activo bit NOT NULL
 );
@@ -74,24 +74,6 @@ create table MASTERFILE.Perfil (
 Perfil_Usuario_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Usuario(Usuario_Cod),
 Perfil_Rol_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Rol(Rol_Cod)
 primary key (Perfil_Usuario_Cod,Perfil_Rol_Cod)
-);
-go
-
-create table MASTERFILE.Factura (
-Factura_Nro numeric(18,0) PRIMARY KEY,
-Factura_Fecha datetime NOT NULL,
-Factura_Total numeric(18,2) NOT NULL,
-Forma_Pago_Desc nvarchar(255) NOT NULL,
-Factura_Usuario_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Usuario(Usuario_Cod)
-);
-go
-
-create table MASTERFILE.Item_Factura (
-Item_Nro_Factura numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Factura(Factura_Nro),
-Item_Detalle nvarchar(255),
-Item_Monto numeric(18,2) NOT NULL,
-Item_Cantidad numeric(18,0) NOT NULL,
-PRIMARY KEY (Item_Nro_Factura,Item_Detalle)
 );
 go
 
@@ -122,6 +104,31 @@ Publicacion_Usuario_Cod numeric(18,0)  NOT NULL  FOREIGN KEY REFERENCES MASTERFI
 );
 go
 
+create table MASTERFILE.Forma_Pago(
+Forma_Pago_Cod numeric(18,0) primary key,
+Forma_Pago_Desc nvarchar(255) NOT NULL
+);
+go
+
+create table MASTERFILE.Factura (
+Factura_Nro numeric(18,0) PRIMARY KEY,
+Factura_Fecha datetime NOT NULL,
+Factura_Total numeric(18,2) NOT NULL,
+Factura_Pago_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Forma_Pago(Forma_Pago_Cod),
+Factura_Publicacion_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Publicacion(Publicacion_Cod)
+);
+go
+
+create table MASTERFILE.Item_Factura (
+Item_Nro_Factura numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Factura(Factura_Nro),
+Item_Nro numeric(18,0),
+Item_Detalle nvarchar(255),
+Item_Monto numeric(18,2) NOT NULL,
+Item_Cantidad numeric(18,0) NOT NULL,
+PRIMARY KEY (Item_Nro_Factura,Item_Nro)
+);
+go
+
 create table MASTERFILE.Cliente (
 Cli_Dni numeric(18,0),
 Cli_Tipo_Documento nvarchar(255),
@@ -146,7 +153,7 @@ primary key (Empresa_Razon_Social,Empresa_Cuit)
 go
 
 create table MASTERFILE.Oferta_Publicacion (
-Oferta_Cod numeric(18,0) primary key,
+Oferta_Cod numeric(18,0) IDENTITY(1,1) primary key,
 Oferta_Publicacion numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Publicacion(Publicacion_Cod),
 Oferta_Usuario_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Usuario(Usuario_Cod),
 Oferta_Fecha datetime NOT NULL,
@@ -155,7 +162,7 @@ Oferta_Monto numeric(18,2) NOT NULL
 go
 
 create table MASTERFILE.Compra_Publicacion (
-Compra_Cod numeric(18,0) primary key,
+Compra_Cod numeric(18,0) IDENTITY(1,1) primary key,
 Compra_Publicacion_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Publicacion(Publicacion_Cod) ,
 Compra_Usuario_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Usuario(Usuario_Cod),
 Compra_Fecha datetime NOT NULL,
@@ -164,9 +171,8 @@ Compra_Cantidad numeric(18,0) NOT NULL
 go
 
 create table MASTERFILE.Calificacion (
-Calificacion_Cod numeric(18,0) primary key ,
-Calificacion_Compra_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Compra_Publicacion(Compra_Publicacion_Cod),
-Calificacion_Usuario_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Usuario(Usuario_Cod),
+Calificacion_Cod numeric(18,0) IDENTITY(1,1) primary key ,
+Calificacion_Compra_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Compra_Publicacion(Compra_Cod),
 Calificacion_Cant_Estrellas numeric(18,0) NOT NULL,
 Calificacion_Descripcion nvarchar(255) NULL
 );
