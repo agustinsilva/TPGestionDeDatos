@@ -64,6 +64,7 @@ Usuario_Cod numeric(18,0) IDENTITY(1,1) PRIMARY KEY ,
 Usuario_Username nvarchar(255) NOT NULL,
 Usuario_Password nvarchar(255) NOT NULL,
 Usuario_Habilitado bit NOT NULL,
+Usuario_Fecha_Creacion datetime  NOT NULL,
 Usuario_Intentos_Fallidos numeric(1,0) NOT NULL,
 Usuario_Detalle_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES  MASTERFILE.Detalle_Persona(Detalle_Cod),
 Usuario_Activo bit NOT NULL
@@ -78,15 +79,15 @@ primary key (Perfil_Usuario_Cod,Perfil_Rol_Cod)
 go
 
 create table MASTERFILE.Estado_Publicacion (
-estadoPbl_Cod numeric(18,0) primary key,
-estadoPbl_descripcion nvarchar(255) NOT NULL 
+EstadoPbl_Cod numeric(18,0) primary key,
+EstadoPbl_descripcion nvarchar(255) NOT NULL 
 );
 go
 
 create table MASTERFILE.Tipo_Publicacion(
-tipoPbl_Cod numeric(18,0) primary key,
-tipoPbl_descripcion nvarchar(255) NOT NULL,
-tipoPbl_Envio bit NOT NULL,
+TipoPbl_Cod numeric(18,0) primary key,
+TipoPbl_descripcion nvarchar(255) NOT NULL,
+TipoPbl_Envio bit NOT NULL,
 )
 
 create table MASTERFILE.Publicacion (
@@ -135,8 +136,7 @@ Cli_Tipo_Documento nvarchar(255),
 Cli_Apellido nvarchar(255)  NOT NULL,
 Cli_Nombre nvarchar(255)  NOT NULL,
 Cli_Fecha_Nac datetime  NOT NULL,
-Cli_Fecha_Creacion datetime  NOT NULL,
-Cli_Detalle_Codigo numeric(18,0) NOT NULL  FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
+Cli_Detalle_Cod numeric(18,0) NOT NULL  FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
 primary key (Cli_Dni,Cli_Tipo_Documento)
 );
 go
@@ -144,10 +144,9 @@ go
 create table MASTERFILE.Empresa (
 Empresa_Razon_Social nvarchar(255),
 Empresa_Cuit nvarchar(255),
-Empresa_Fecha_Creacion datetime NOT NULL,
 Empresa_Nombre_Contacto nvarchar(255) NOT NULL,
-Empresa_Rubro nvarchar(255) NOT NULL,
-Empresa_Detalle_Codigo numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
+Empresa_Rubro_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Rubro(Rubro_Cod),
+Empresa_Detalle_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
 primary key (Empresa_Razon_Social,Empresa_Cuit)
 );
 go
