@@ -1,6 +1,11 @@
 use [GD1C2016];
 go
 
+/***************************************************************/
+/************ Seccion DDL*******************/
+/***************************************************************/
+
+--Creacion de esquema con nombre del grupo
 create schema [MASTERFILE] authorization [gd];
 go
 
@@ -13,8 +18,8 @@ Publicacion_Visibilidad_Porcentaje numeric(18,2) NOT NULL
 go
 
 create table MASTERFILE.Rubro (
-Rubro_Cod numeric(18,0) NOT NULL PRIMARY KEY,
-Rubro_Desc_Corta nvarchar(255) NULL,
+Rubro_Cod numeric(18,0) IDENTITY(1,1) PRIMARY KEY,
+Rubro_Desc_Corta nvarchar(10) NULL,
 Rubro_Desc_Larga nvarchar(255) NULL
 );
 go
@@ -40,9 +45,9 @@ Detalle_Residencia_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Residenci
 go
 
 create table MASTERFILE.Rol (
-Rol_Cod numeric(18,0) PRIMARY KEY,
+Rol_Cod numeric(18,0) IDENTITY(1,1) PRIMARY KEY,
 Rol_Nombre nvarchar(255) NOT NULL,
-Rol_Habilitado bit NOT NULL
+Rol_Habilitado bit NOT NULL default 1
 );
 go
 
@@ -64,6 +69,7 @@ Usuario_Cod numeric(18,0) IDENTITY(1,1) PRIMARY KEY ,
 Usuario_Username nvarchar(255) NOT NULL,
 Usuario_Password nvarchar(255) NOT NULL,
 Usuario_Habilitado bit NOT NULL,
+Usuario_Fecha_Creacion datetime  NOT NULL,
 Usuario_Intentos_Fallidos numeric(1,0) NOT NULL,
 Usuario_Detalle_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES  MASTERFILE.Detalle_Persona(Detalle_Cod),
 Usuario_Activo bit NOT NULL
@@ -78,15 +84,15 @@ primary key (Perfil_Usuario_Cod,Perfil_Rol_Cod)
 go
 
 create table MASTERFILE.Estado_Publicacion (
-estadoPbl_Cod numeric(18,0) primary key,
-estadoPbl_descripcion nvarchar(255) NOT NULL 
+EstadoPbl_Cod numeric(18,0) IDENTITY(1,1) primary key,
+EstadoPbl_descripcion nvarchar(255) NOT NULL 
 );
 go
 
 create table MASTERFILE.Tipo_Publicacion(
-tipoPbl_Cod numeric(18,0) primary key,
-tipoPbl_descripcion nvarchar(255) NOT NULL,
-tipoPbl_Envio bit NOT NULL,
+TipoPbl_Cod numeric(18,0) primary key,
+TipoPbl_descripcion nvarchar(255) NOT NULL,
+TipoPbl_Envio bit NOT NULL default 1
 )
 
 create table MASTERFILE.Publicacion (
@@ -105,7 +111,7 @@ Publicacion_Usuario_Cod numeric(18,0)  NOT NULL  FOREIGN KEY REFERENCES MASTERFI
 go
 
 create table MASTERFILE.Forma_Pago(
-Forma_Pago_Cod numeric(18,0) primary key,
+Forma_Pago_Cod numeric(18,0) IDENTITY(1,1) primary key,
 Forma_Pago_Desc nvarchar(255) NOT NULL
 );
 go
@@ -135,8 +141,7 @@ Cli_Tipo_Documento nvarchar(255),
 Cli_Apellido nvarchar(255)  NOT NULL,
 Cli_Nombre nvarchar(255)  NOT NULL,
 Cli_Fecha_Nac datetime  NOT NULL,
-Cli_Fecha_Creacion datetime  NOT NULL,
-Cli_Detalle_Codigo numeric(18,0) NOT NULL  FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
+Cli_Detalle_Cod numeric(18,0) NOT NULL  FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
 primary key (Cli_Dni,Cli_Tipo_Documento)
 );
 go
@@ -144,10 +149,9 @@ go
 create table MASTERFILE.Empresa (
 Empresa_Razon_Social nvarchar(255),
 Empresa_Cuit nvarchar(255),
-Empresa_Fecha_Creacion datetime NOT NULL,
 Empresa_Nombre_Contacto nvarchar(255) NOT NULL,
-Empresa_Rubro nvarchar(255) NOT NULL,
-Empresa_Detalle_Codigo numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
+Empresa_Rubro_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Rubro(Rubro_Cod),
+Empresa_Detalle_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
 primary key (Empresa_Razon_Social,Empresa_Cuit)
 );
 go
@@ -183,4 +187,98 @@ Publicacion_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Publicacion(Publ
 Rubro_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Rubro(Rubro_Cod),
 PRIMARY KEY (Publicacion_Cod,Rubro_Cod)
 );
+go
+
+
+create function MASTERFILE.crearDescripcionCorta(@descripcion nvarchar(255))
+returns nvarchar(10)
+as
+begin
+return SUBSTRING(@descripcion,1,3);
+end;
+go
+
+create function MASTERFILE.calcularCalificacion(@calificacion numeric(18,0))
+returns numeric(18,0)
+as
+begin
+DECLARE @valor
+if (@calificacion >= 5)
+{
+	@valor = 5;
+}
+else
+{
+	@valor = @calificacion;
+}
+
+return @valor;
+end;
+go
+
+create procedure MASTERFILE.cargarRubros
+as
+begin
+
+Insert into MASTERFILE.Rubro (Rubro_Desc_Corta,Rubro_Desc_Larga)
+select distinct MASTERFILE.crearDescripcionCorta(gd_esquema.Maestra.Publicacion_Rubro_Descripcion),gd_esquema.Maestra.Publicacion_Rubro_Descripcion
+from gd_esquema.Maestra;
+
+end;
+go
+
+create procedure MASTERFILE.cargarRoles
+as
+begin
+
+Insert into MASTERFILE.Rol (Rol_Nombre) values ("Administrador");
+Insert into MASTERFILE.Rol (Rol_Nombre) values ("Cliente");
+Insert into MASTERFILE.Rol (Rol_Nombre) values ("Empresa");
+
+end;
+go
+
+create procedure MASTERFILE.cargarEstadosPublicacion
+as
+begin
+
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Borrador");
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Activa");
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Pausada");
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Finalizada");
+
+end;
+go
+
+create procedure MASTERFILE.cargarTiposPublicacion
+as
+begin
+
+Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Compra Inmediata");
+Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Subasta");
+
+end;
+go
+
+create procedure MASTERFILE.cargarFormaPago
+as
+begin
+
+Insert into MASTERFILE.MASTERFILE.Forma_Pago (gd_esquema.Maestra.Forma_Pago_Desc)
+select distinct gd_esquema.Maestra.Forma_Pago_Desc from gd_esquema.Maestra 
+where gd_esquema.Maestra.Forma_Pago_Desc is not null;
+
+end;
+go
+
+create procedure MASTERFILE.migracion
+as
+begin
+
+EXEC MASTERFILE.cargarRubros;
+EXEC MASTERFILE.cargarRoles;
+EXEC MASTERFILE.cargarEstadosPublicacion;
+EXEC MASTERFILE.cargarTiposPublicacion;
+
+end;
 go
