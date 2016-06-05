@@ -9,6 +9,7 @@ go
 create schema [MASTERFILE] authorization [gd];
 go
 
+--Creacion de tablas del sistema
 create table MASTERFILE.Publicacion_Visibilidad (
 Publicacion_Visibilidad_Cod numeric(18,0) PRIMARY KEY,
 Publicacion_Visibilidad_Desc nvarchar(255) NOT NULL,
@@ -25,19 +26,19 @@ Rubro_Desc_Larga nvarchar(255) NULL
 go
 
 create table MASTERFILE.Residencia (
-Residencia_Cod numeric(18,0) PRIMARY KEY,
+Residencia_Cod IDENTITY(1,1) numeric(18,0) PRIMARY KEY,
 Residencia_Dom_Calle nvarchar(255) NOT NULL,
 Residencia_Nro_Calle numeric(18,0) NOT NULL,
-Residencia_Piso numeric(18,0) NOT NULL,
-Residencia_Depto nvarchar(50) NOT NULL,
+Residencia_Piso numeric(18,0)  NULL,
+Residencia_Depto nvarchar(50)  NULL,
 Residencia_Cod_Postal nvarchar(50) NOT NULL,
-Residencia_Localidad nvarchar(255) NOT NULL
+Residencia_Localidad nvarchar(255) NULL
 );
 go
 
 create table MASTERFILE.Detalle_Persona (
 Detalle_Cod numeric(18,0) PRIMARY KEY,
-Detalle_Telefono nvarchar(50) NOT NULL,
+Detalle_Telefono nvarchar(50) NULL,
 Detalle_Mail nvarchar(255) NOT NULL,
 Detalle_Tipo_Persona nvarchar(50) NOT NULL,
 Detalle_Residencia_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Residencia(Residencia_Cod)
@@ -315,31 +316,70 @@ where gd_esquema.Maestra.Forma_Pago_Desc is not null;
 end;
 go
 
--- create procedure MASTERFILE.cargarEmpresas
--- as
--- declare @Razon_Social nvarchar(255),
--- @Cuit nvarchar(255),
--- @Nombre_Contacto nvarchar(255),
--- @Rubro_Cod
--- begin
+create procedure MASTERFILE.migrarEmpresas
+as
+declare @Razon_Social nvarchar(255),
+@Cuit nvarchar(255),
+@Fecha_Creacion datetime,
+@Mail nvarchar(255),
+@Dom_Calle nvarchar(255),
+@Nro_Calle numeric(18,0),
+@Piso numeric(18,0),
+@Depto nvarchar(50),
+@Cod_Postal nvarchar(50),
+@ultimoId numeric(18,0)
+begin
 
+declare empresas cursor for
+	select DISTINCT @Razon_Social=Publ_Empresa_Razon_Social
+    ,@Cuit=Publ_Empresa_Cuit
+    ,@Fecha_Creacion=Publ_Empresa_Fecha_Creacion
+    ,@Mail=Publ_Empresa_Mail
+    ,@Dom_Calle=Publ_Empresa_Dom_Calle
+    ,@Nro_Calle=Publ_Empresa_Nro_Calle
+    ,@Piso=Publ_Empresa_Piso
+    ,@Depto=Publ_Empresa_Depto
+	,@Cod_Postal=Publ_Empresa_Cod_Postal 
+	from MASTERFILE.gd_esquema.Maestra
+	where Publ_Empresa_Cuit is not null;
 
+	open empresas
+	
+	FETCH NEXT FROM empresas
+	INTO @Razon_Social,@Cuit,@Fecha_Creacion,@Mail,@Dom_Calle,@Nro_Calle,@Piso,@Depto,@Cod_Postal
+	while @@FETCH_STATUS = 0
+	begin
 
--- declare empresas cursor for
-	-- select DISTINCT Publ_Empresa_Razon_Social
-    -- ,Publ_Empresa_Cuit
-    -- ,Publ_Empresa_Fecha_Creacion
-    -- ,Publ_Empresa_Mail
-    -- ,Publ_Empresa_Dom_Calle
-    -- ,Publ_Empresa_Nro_Calle
-    -- ,Publ_Empresa_Piso
-    -- ,Publ_Empresa_Depto
-	-- ,Publ_Empresa_Cod_Postal 
-	-- from MASTERFILE.gd_esquema.Maestra
+		Insert into MASTERFILE.Residencia(Residencia_Dom_Calle,Residencia_Nro_Calle,Residencia_Piso,Residencia_Depto,Residencia_Cod_Postal) 
+		values(@Dom_Calle,@Nro_Calle,@Piso,@Depto,@Cod_Postal);
+		
+		--Obtengo ultimo id insertado en tabla residencia.
+		set ultimoId = SCOPE_IDENTITY();
+		
+		Insert into MASTERFILE.Detalle_Persona (Detalle_Mail,Detalle_Tipo_Persona,Detalle_Residencia_Cod)
+		values (@Mail,'Empresa',ultimoId);
+		
+		--Obtengo ultimo id insertado en tabla Detalle_Persona.
+		set ultimoId = SCOPE_IDENTITY();
+		
+		Insert into MASTERFILE.Empresa (Empresa_Razon_Social,Empresa_Cuit,Empresa_Detalle_Cod) values (@Razon_Social,@Cuit,@ultimoId);
+		
+		set ultimoId = SCOPE_IDENTITY();
+		
+		--Se utiliza cuit como usuario y contraseña por ahora hasta encontrar algo mejor.
+		Insert into MASTERFILE.Usuario(Usuario_Username,Usuario_Password,Usuario_Detalle_Cod) values (@Cuit,@Cuit,ultimoId);
+		
+		-- inserto el registro del cursor en variables
+		FETCH NEXT FROM empresas
+		INTO @Razon_Social,@Cuit,@Fecha_Creacion,@Mail,@Dom_Calle,@Nro_Calle,@Piso,@Depto,@Cod_Postal
+	end
 
-	-- open empresas
--- end;
--- go
+	-- cierro y elimino el cursor
+	CLOSE empresas
+	DEALLOCATE empresas
+	
+end;
+go
 
 CREATE PROCEDURE MASTERFILE.loginUsuario (
 @username nvarchar(255),
