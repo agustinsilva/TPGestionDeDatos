@@ -46,14 +46,14 @@ go
 
 create table MASTERFILE.Rol (
 Rol_Cod numeric(18,0) IDENTITY(1,1) PRIMARY KEY,
-Rol_Nombre nvarchar(255) NOT NULL,
+Rol_Nombre nvarchar(255) NOT NULL UNIQUE, 
 Rol_Habilitado bit NOT NULL default 1
 );
 go
 
 create table MASTERFILE.Funcionalidad_Rol (
 Funcionalidad_Rol_Cod numeric(18,0) PRIMARY KEY,
-Funcionalidad_Rol_Desc nvarchar(255) NOT NULL
+Funcionalidad_Rol_Desc nvarchar(255) NOT NULL UNIQUE
 );
 go
 
@@ -66,13 +66,13 @@ go
 
 create table MASTERFILE.Usuario (
 Usuario_Cod numeric(18,0) IDENTITY(1,1) PRIMARY KEY ,
-Usuario_Username nvarchar(255) NOT NULL,
+Usuario_Username nvarchar(255) NOT NULL UNIQUE,
 Usuario_Password nvarchar(255) NOT NULL,
-Usuario_Habilitado bit NOT NULL,
-Usuario_Fecha_Creacion datetime  NOT NULL,
-Usuario_Intentos_Fallidos numeric(1,0) NOT NULL,
+Usuario_Habilitado bit NOT NULL DEFAULT 1,
+Usuario_Fecha_Creacion datetime  NOT NULL DEFAULT SYSDATETIME(),
+Usuario_Intentos_Fallidos numeric(1,0) NOT NULL DEFAULT 0,
 Usuario_Detalle_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES  MASTERFILE.Detalle_Persona(Detalle_Cod),
-Usuario_Activo bit NOT NULL
+Usuario_Activo bit NOT NULL DEFAULT 1
 );
 go
 
@@ -205,14 +205,44 @@ begin
 DECLARE @valor
 if (@calificacion >= 5)
 {
-	@valor = 5;
+	set @valor = 5;
 }
 else
 {
-	@valor = @calificacion;
+	set @valor = @calificacion;
 }
 
 return @valor;
+end;
+go
+
+
+CREATE FUNCTION MASTERFILE.obtenerMensajeError (
+@idMensaje int)
+RETURNS nvarchar(255)
+AS
+BEGIN
+RETURN (SELECT TOP 1 convert(nvarchar(255), text) FROM sys.messages WHERE message_id = @idMensaje)
+END
+;
+GO
+
+
+create procedure MASTERFILE.obtenerCodigoRol(@nombreRol nvarchar(255) IN,@codigoRol numeric(18,0) OUT)
+as
+begin
+
+select @codigoRol = Rol_Cod from MASTERFILE.Rol where Rol_Nombre = @nombreRol;
+
+end;
+go
+
+create procedure MASTERFILE.obtenerCodigoFuncionalidad(@nombreFuncionalidad nvarchar(255) IN,@codigoFuncionalidad numeric(18,0) OUT)
+as
+begin
+
+select @codigoFuncionalidad = Funcionalidad_Rol_Cod from MASTERFILE.Funcionalidad_Rol where Funcionalidad_Rol_Desc = @nombreFuncionalidad;
+
 end;
 go
 
@@ -227,36 +257,50 @@ from gd_esquema.Maestra;
 end;
 go
 
-create procedure MASTERFILE.cargarRoles
+--Procedure para dar baja un rol
+create procedure MASTERFILE.darBajaRol
+(@nombreRol nvarchar(255))
 as
+DECLARE @codigo numeric(18,0)
 begin
 
-Insert into MASTERFILE.Rol (Rol_Nombre) values ("Administrador");
-Insert into MASTERFILE.Rol (Rol_Nombre) values ("Cliente");
-Insert into MASTERFILE.Rol (Rol_Nombre) values ("Empresa");
+EXEC MASTERFILE.obtenerCodigoRol(@nombreRol,@codigo);
+
+update MASTERFILE.Rol set Rol_Habilitado = 0 where Rol_Cod = @codigo; 
+
+delete from MASTERFILE.Perfil where Perfil_Rol_Cod = @codigo;
 
 end;
 go
 
-create procedure MASTERFILE.cargarEstadosPublicacion
+--Procedure para dar alta un rol
+create procedure MASTERFILE.darAltaRol
+(@nombreRol nvarchar(255))
 as
 begin
-
-Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Borrador");
-Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Activa");
-Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Pausada");
-Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Finalizada");
-
+insert into MASTERFILE.Rol (Rol_Nombre) values (@nombreRol);
 end;
 go
 
-create procedure MASTERFILE.cargarTiposPublicacion
+--Procedure para dar alta un rol
+create procedure MASTERFILE.modificarRol
+(@nombreRol nvarchar(255),@nombreNuevo nvarchar(255))
 as
 begin
+update MASTERFILE.Rol set Rol_Nombre = @nombreNuevo where Rol_Nombre = @nombreRol;
+end;
+go
 
-Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Compra Inmediata");
-Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Subasta");
-
+--Procedure para agregar una funcionalidad a un rol
+create procedure MASTERFILE.agregarFuncionalidadARol
+(@nombreRol nvarchar(255),@nombreFuncionalidad nvarchar(255))
+as
+DECLARE @codigoRol numeric(18,0),
+		@codigoFunc numeric(18,0)
+begin
+EXEC MASTERFILE.obtenerCodigoRol(@nombreRol,@codigo);
+EXEC MASTERFILE.obtenerCodigoFuncionalidad(@nombreFuncionalidad,@codigoFunc);
+insert into MASTERFILE.Accion_Rol (Accion_Rol_Rol_Cod,Accion_Rol_Func_Rol_Cod) values (@codigoRol,@codigoFunc);
 end;
 go
 
@@ -271,14 +315,126 @@ where gd_esquema.Maestra.Forma_Pago_Desc is not null;
 end;
 go
 
+-- create procedure MASTERFILE.cargarEmpresas
+-- as
+-- declare @Razon_Social nvarchar(255),
+-- @Cuit nvarchar(255),
+-- @Nombre_Contacto nvarchar(255),
+-- @Rubro_Cod
+-- begin
+
+
+
+-- declare empresas cursor for
+	-- select DISTINCT Publ_Empresa_Razon_Social
+    -- ,Publ_Empresa_Cuit
+    -- ,Publ_Empresa_Fecha_Creacion
+    -- ,Publ_Empresa_Mail
+    -- ,Publ_Empresa_Dom_Calle
+    -- ,Publ_Empresa_Nro_Calle
+    -- ,Publ_Empresa_Piso
+    -- ,Publ_Empresa_Depto
+	-- ,Publ_Empresa_Cod_Postal 
+	-- from MASTERFILE.gd_esquema.Maestra
+
+	-- open empresas
+-- end;
+-- go
+
+CREATE PROCEDURE MASTERFILE.loginUsuario (
+@username nvarchar(255),
+@password nvarchar(255) 
+)
+as
+DECLARE
+@usuario_habilitado bit,
+@usuario_activo bit,
+@usuario_codigo numeric(18,0),
+@usuario_password nvarchar(255),
+@intentos_Fallidos numeric(1,0)
+
+BEGIN TRY
+BEGIN TRANSACTION
+
+begin
+select @usuario_codigo=Usuario_Cod,@usuario_activo=Usuario_Activo,@usuario_habilitado=Usuario_Habilitado,
+@usuario_password=Usuario_Password,@intentos_Fallidos=Usuario_Intentos_Fallidos
+from MASTERFILE.Usuario
+where Usuario_Username = @username;
+
+if @usuario_habilitado <> 1
+	begin
+		SET @err_msg = 'El usuario con el que intenta acceder esta deshabilitado.'
+		RAISERROR(@err_msg,14,1)
+	end
+
+if @usuario_activo <> 1 
+	begin
+		SET @err_msg = 'El usuario con el que intenta acceder esta dado de baja en el sistema.'
+		RAISERROR(@err_msg,14,1)
+	end
+
+	--login fallido
+	if  @usuario_password <> @password
+	begin
+		if @intentos_Fallidos < 2
+		begin
+			update MASTERFILE.Usuario set Usuario_Intentos_Fallidos = @intentos_Fallidos + 1 where Usuario_Cod = @usuario_codigo
+			COMMIT TRANSACTION
+			BEGIN TRANSACTION
+			SET @err_msg = 'Usuario o contraseña invalida.'
+			RAISERROR(@err_msg,14,1)
+		end
+		else
+		begin 
+			update MASTERFILE.Usuario set Usuario_Intentos_Fallidos = @intentos_Fallidos + 1, Usuario_Habilitado = 0 where Usuario_Cod = @usuario_codigo
+			COMMIT TRANSACTION
+			BEGIN TRANSACTION
+			SET @err_msg = 'Usuario o contraseña invalida. Por su seguridad, su usuario ha sido bloqueado.'
+			RAISERROR(@err_msg,14,1)
+		end
+	end
+	
+	-- login realizado de forma correcta
+	update MASTERFILE.Usuario set Usuario_Intentos_Fallidos = 0 where Usuario_Cod = @usuario_codigo
+	
+commit transaction
+end try
+begin catch
+	rollback transaction	
+	if (@@error = 0)
+		RAISERROR(@err_msg,14,1)
+	else
+	begin
+		set @err_msg = MASTERFILE.obtenerMensajeError(@@error)
+		RAISERROR(@err_msg,14,1)
+	end
+end catch
+;
+go
+
 create procedure MASTERFILE.migracion
 as
 begin
 
 EXEC MASTERFILE.cargarRubros;
-EXEC MASTERFILE.cargarRoles;
-EXEC MASTERFILE.cargarEstadosPublicacion;
-EXEC MASTERFILE.cargarTiposPublicacion;
+
+--Carga de roles de usuarios
+Insert into MASTERFILE.Rol (Rol_Nombre) values ("Administrador");
+Insert into MASTERFILE.Rol (Rol_Nombre) values ("Cliente");
+Insert into MASTERFILE.Rol (Rol_Nombre) values ("Empresa");
+
+--Carga de estados de publicacion
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Borrador");
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Activa");
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Pausada");
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Finalizada");
+
+--Carga de tipos de publicacion
+Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Compra Inmediata");
+Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Subasta");
+
+EXEC cargarFormaPago;
 
 end;
 go
