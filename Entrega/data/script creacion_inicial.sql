@@ -53,7 +53,7 @@ Rol_Habilitado bit NOT NULL default 1
 go
 
 create table MASTERFILE.Funcionalidad_Rol (
-Funcionalidad_Rol_Cod numeric(18,0) PRIMARY KEY,
+Funcionalidad_Rol_Cod numeric(18,0) IDENTITY(1,1) PRIMARY KEY,
 Funcionalidad_Rol_Desc nvarchar(255) NOT NULL UNIQUE
 );
 go
@@ -72,7 +72,7 @@ Usuario_Password nvarchar(255) NOT NULL,
 Usuario_Habilitado bit NOT NULL DEFAULT 1,
 Usuario_Fecha_Creacion datetime  NOT NULL DEFAULT SYSDATETIME(),
 Usuario_Intentos_Fallidos numeric(1,0) NOT NULL DEFAULT 0,
-Usuario_Detalle_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES  MASTERFILE.Detalle_Persona(Detalle_Cod),
+Usuario_Detalle_Cod numeric(18,0) NULL FOREIGN KEY REFERENCES  MASTERFILE.Detalle_Persona(Detalle_Cod),
 Usuario_Activo bit NOT NULL DEFAULT 1
 );
 go
@@ -137,12 +137,12 @@ PRIMARY KEY (Item_Nro_Factura,Item_Nro)
 go
 
 create table MASTERFILE.Cliente (
-Cli_Dni numeric(18,0),
+Cli_Dni numeric(18,0) ,
 Cli_Tipo_Documento nvarchar(255),
 Cli_Apellido nvarchar(255)  NOT NULL,
 Cli_Nombre nvarchar(255)  NOT NULL,
 Cli_Fecha_Nac datetime  NOT NULL,
-Cli_Detalle_Cod numeric(18,0) NOT NULL  FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
+Cli_Detalle_Cod numeric(18,0) NULL  FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
 primary key (Cli_Dni,Cli_Tipo_Documento)
 );
 go
@@ -316,6 +316,7 @@ where gd_esquema.Maestra.Forma_Pago_Desc is not null;
 end;
 go
 
+--Procedure encargado de migrar los usuarios de tipo Empresa
 create procedure MASTERFILE.migrarEmpresas
 as
 declare @Razon_Social nvarchar(255),
@@ -331,15 +332,15 @@ declare @Razon_Social nvarchar(255),
 begin
 
 declare empresas cursor for
-	select DISTINCT @Razon_Social=Publ_Empresa_Razon_Social
-    ,@Cuit=Publ_Empresa_Cuit
-    ,@Fecha_Creacion=Publ_Empresa_Fecha_Creacion
-    ,@Mail=Publ_Empresa_Mail
-    ,@Dom_Calle=Publ_Empresa_Dom_Calle
-    ,@Nro_Calle=Publ_Empresa_Nro_Calle
-    ,@Piso=Publ_Empresa_Piso
-    ,@Depto=Publ_Empresa_Depto
-	,@Cod_Postal=Publ_Empresa_Cod_Postal 
+	select DISTINCT Publ_Empresa_Razon_Social
+    Publ_Empresa_Cuit
+    Publ_Empresa_Fecha_Creacion
+    Publ_Empresa_Mail
+    Publ_Empresa_Dom_Calle
+    Publ_Empresa_Nro_Calle
+    Publ_Empresa_Piso
+    Publ_Empresa_Depto
+	Publ_Empresa_Cod_Postal 
 	from MASTERFILE.gd_esquema.Maestra
 	where Publ_Empresa_Cuit is not null;
 
@@ -377,6 +378,73 @@ declare empresas cursor for
 	-- cierro y elimino el cursor
 	CLOSE empresas
 	DEALLOCATE empresas
+	
+end;
+go
+
+--Procedure encargado de migrar los usuarios de tipo Cliente
+create procedure MASTERFILE.migrarClientes
+as
+declare @Dni nvarchar(255),
+@Apellido nvarchar(255),
+@Nombre datetime,
+@Fecha_Nac nvarchar(255),
+@Mail nvarchar(255),
+@Dom_Calle nvarchar(255),
+@Nro_Calle numeric(18,0),
+@Piso numeric(18,0),
+@Depto nvarchar(50),
+@Cod_Postal nvarchar(50),
+@ultimoId numeric(18,0)
+begin
+
+declare clientes cursor for
+	select Publ_Cli_Dni,Publ_Cli_Apellido,Publ_Cli_Nombre,Publ_Cli_Fecha_Nac,Publ_Cli_Mail,Publ_Cli_Depto,
+	Publ_Cli_Dom_Calle,Publ_Cli_Nro_Calle,Publ_Cli_Piso,Publ_Cli_Cod_Postal
+	from MASTERFILE.gd_esquema.Maestra
+	where Publ_Cli_Dni is not null;
+	UNION
+	select Cli_Dni,Cli_Apeliido,Cli_Nombre,Cli_Fecha_Nac,Cli_Mail,Cli_Depto,
+	Cli_Dom_Calle,Cli_Nro_Calle,Cli_Piso,Cli_Cod_Postal
+	from MASTERFILE.gd_esquema.Maestra
+	where Cli_Dni is not null;
+
+	open clientes
+	
+	FETCH NEXT FROM clientes
+	INTO @Dni,@Apellido,@Nombre,@Fecha_Nac,@Mail,@Depto,@Dom_Calle,@Nro_Calle,@Piso,@Cod_Postal
+	while @@FETCH_STATUS = 0
+	begin
+
+		Insert into MASTERFILE.Residencia(Residencia_Dom_Calle,Residencia_Nro_Calle,Residencia_Piso,Residencia_Depto,Residencia_Cod_Postal) 
+		values(@Dom_Calle,@Nro_Calle,@Piso,@Depto,@Cod_Postal);
+		
+		--Obtengo ultimo id insertado en tabla residencia.
+		set ultimoId = SCOPE_IDENTITY();
+		
+		Insert into MASTERFILE.Detalle_Persona (Detalle_Mail,Detalle_Tipo_Persona,Detalle_Residencia_Cod)
+		values (@Mail,'Cliente',ultimoId);
+		
+		--Obtengo ultimo id insertado en tabla Detalle_Persona.
+		set ultimoId = SCOPE_IDENTITY();
+		
+		Insert into MASTERFILE.Cliente (Cli_Dni,Cli_Tipo_Documento,Cli_Apellido,Cli_Nombre,Cli_Fecha_Nac,Cli_Detalle_Cod)
+		values (@Dni,'DNI',@Apellido,@Nombre,@Fecha_Nac,@ultimoId);
+		
+		set ultimoId = SCOPE_IDENTITY();
+		
+		--Se utiliza dni como usuario y contraseña por ahora hasta encontrar algo mejor.
+		Insert into MASTERFILE.Usuario(Usuario_Username,Usuario_Password,Usuario_Detalle_Cod) 
+		values (@Dni,@Dni,ultimoId);
+		
+		-- inserto el registro del cursor en variables
+		FETCH NEXT FROM clientes
+		INTO @Dni,@Apellido,@Nombre,@Fecha_Nac,@Mail,@Depto,@Dom_Calle,@Nro_Calle,@Piso,@Cod_Postal
+	end
+
+	-- cierro y elimino el cursor
+	CLOSE clientes
+	DEALLOCATE clientes
 	
 end;
 go
@@ -464,6 +532,20 @@ Insert into MASTERFILE.Rol (Rol_Nombre) values ("Administrador");
 Insert into MASTERFILE.Rol (Rol_Nombre) values ("Cliente");
 Insert into MASTERFILE.Rol (Rol_Nombre) values ("Empresa");
 
+--Cargar funcionalidades
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Alta de roles');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Modificacion de roles');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Baja de roles');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Alta de usuarios');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Modificacion de usuarios');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Baja de usuarios');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Alta de rubros');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Modificacion de rubros');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Baja de rubros');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Alta de visibilidades');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Modificacion de visibilidades');
+Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Baja de visibilidades');
+
 --Carga de estados de publicacion
 Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Borrador");
 Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Activa");
@@ -474,7 +556,13 @@ Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Finali
 Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Compra Inmediata");
 Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Subasta");
 
-EXEC cargarFormaPago;
+EXEC MASTERFILE.cargarFormaPago;
+EXEC MASTERFILE.migrarEmpresas;
+EXEC MASTERFILE.migrarClientes;
+
+--Crear usuario Admin
+Insert into MASTERFILE.Usuario(Usuario_Username,Usuario_Password,Usuario_Detalle_Cod) 
+		values ('Administrador','Administrador',NULL);
 
 end;
 go
