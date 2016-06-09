@@ -11,10 +11,11 @@ go
 
 --Creacion de tablas del sistema
 create table MASTERFILE.Publicacion_Visibilidad (
-Publicacion_Visibilidad_Cod numeric(18,0) PRIMARY KEY,
-Publicacion_Visibilidad_Desc nvarchar(255) NOT NULL,
-Publicacion_Visibilidad_Precio numeric(18,2) NOT NULL,
-Publicacion_Visibilidad_Porcentaje numeric(18,2) NOT NULL
+Publ_Vsbldd_Cod numeric(18,0) PRIMARY KEY,
+Publ_Vsbldd_Desc nvarchar(255) NOT NULL,
+Publ_Vsbldd_Cmsn_Tipo numeric(18,2) NOT NULL,
+Publ_Vsbldd_Cmsn_Ventas numeric(18,2) NOT NULL,
+Publ_Vsbldd_Cmsn_Envio numeric(18,2) NULL default 100
 );
 go
 
@@ -104,7 +105,7 @@ Publicacion_Fecha_Inicio datetime NOT NULL,
 Publicacion_Fecha_Venc datetime NOT NULL,
 Publicacion_Precio numeric(18,2) NOT NULL,
 Publicacion_Tipo_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Tipo_Publicacion(tipoPbl_Cod),
-Publicacion_Visibilidad_Cod numeric(18,0) NOT NULL  FOREIGN KEY REFERENCES MASTERFILE.Publicacion_Visibilidad(Publicacion_Visibilidad_Cod),
+Publicacion_Visibilidad_Cod numeric(18,0) NOT NULL  FOREIGN KEY REFERENCES MASTERFILE.Publicacion_Visibilidad(Publ_Vsbldd_Cod),
 Publicacion_Estado_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Estado_Publicacion(estadoPbl_Cod),
 Publicacion_Preguntas bit NOT NULL,
 Publicacion_Usuario_Cod numeric(18,0)  NOT NULL  FOREIGN KEY REFERENCES MASTERFILE.Usuario(Usuario_Cod)
@@ -229,7 +230,7 @@ END
 GO
 
 
-create procedure MASTERFILE.obtenerCodigoRol(@nombreRol nvarchar(255) IN,@codigoRol numeric(18,0) OUT)
+create procedure MASTERFILE.obtenerCodigoRol(@nombreRol nvarchar(255),@codigoRol numeric(18,0) OUTPUT)
 as
 begin
 
@@ -238,7 +239,7 @@ select @codigoRol = Rol_Cod from MASTERFILE.Rol where Rol_Nombre = @nombreRol;
 end;
 go
 
-create procedure MASTERFILE.obtenerCodigoFuncionalidad(@nombreFuncionalidad nvarchar(255) IN,@codigoFuncionalidad numeric(18,0) OUT)
+create procedure MASTERFILE.obtenerCodigoFuncionalidad(@nombreFuncionalidad nvarchar(255),@codigoFuncionalidad numeric(18,0) OUTPUT)
 as
 begin
 
@@ -279,9 +280,12 @@ create procedure MASTERFILE.darAltaRol
 (@nombreRol nvarchar(255))
 as
 begin
+BEGIN TRANSACTION
 insert into MASTERFILE.Rol (Rol_Nombre) values (@nombreRol);
+commit;
 end;
 go
+
 
 --Procedure para dar alta un rol
 create procedure MASTERFILE.modificarRol
@@ -292,18 +296,17 @@ update MASTERFILE.Rol set Rol_Nombre = @nombreNuevo where Rol_Nombre = @nombreRo
 end;
 go
 
---Procedure para agregar una funcionalidad a un rol
-create procedure MASTERFILE.agregarFuncionalidadARol
-(@nombreRol nvarchar(255),@nombreFuncionalidad nvarchar(255))
+create procedure MASTERFILE.agregarFuncionalidadRol(@nombreRol nvarchar(255), @nombreFuncionalidad nvarchar(255) )
 as
 DECLARE @codigoRol numeric(18,0),
-		@codigoFunc numeric(18,0)
+@codigoFuncionalidad numeric(18,0);
 begin
-EXEC MASTERFILE.obtenerCodigoRol(@nombreRol,@codigo);
-EXEC MASTERFILE.obtenerCodigoFuncionalidad(@nombreFuncionalidad,@codigoFunc);
-insert into MASTERFILE.Accion_Rol (Accion_Rol_Rol_Cod,Accion_Rol_Func_Rol_Cod) values (@codigoRol,@codigoFunc);
+EXEC MASTERFILE.obtenerCodigoFuncionalidad @nombreFuncionalidad,@codigoFuncionalidad OUTPUT;
+EXEC MASTERFILE.obtenerCodigoRol @nombreRol,@codigoRol OUTPUT;
+INSERT INTO MASTERFILE.Accion_Rol(Accion_Rol_Rol_Cod,Accion_Rol_Func_Rol_Cod) values (@codigoRol,@codigoFuncionalidad);
 end;
 go
+
 
 create procedure MASTERFILE.cargarFormaPago
 as
@@ -381,6 +384,13 @@ declare empresas cursor for
 	
 end;
 go
+
+CREATE PROCEDURE MASTERFILE.migrarVisibilidad
+as
+begin
+
+end;
+go;
 
 --Procedure encargado de migrar los usuarios de tipo Cliente
 create procedure MASTERFILE.migrarClientes
@@ -528,33 +538,33 @@ begin
 EXEC MASTERFILE.cargarRubros;
 
 --Carga de roles de usuarios
-Insert into MASTERFILE.Rol (Rol_Nombre) values ("Administrador");
-Insert into MASTERFILE.Rol (Rol_Nombre) values ("Cliente");
-Insert into MASTERFILE.Rol (Rol_Nombre) values ("Empresa");
+Insert into MASTERFILE.Rol (Rol_Nombre) values ('Administrador');
+Insert into MASTERFILE.Rol (Rol_Nombre) values ('Cliente');
+Insert into MASTERFILE.Rol (Rol_Nombre) values ('Empresa');
 
 --Cargar funcionalidades
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Alta de roles');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Modificacion de roles');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Baja de roles');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Alta de usuarios');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Modificacion de usuarios');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Baja de usuarios');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Alta de rubros');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Modificacion de rubros');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Baja de rubros');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Alta de visibilidades');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Modificacion de visibilidades');
-Insert into MASTERFILE.Funcionalidad_Rol (Rol_Descripcion) values ('Baja de visibilidades');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Alta de roles');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Modificacion de roles');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Baja de roles');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Alta de usuarios');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Modificacion de usuarios');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Baja de usuarios');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Alta de rubros');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Modificacion de rubros');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Baja de rubros');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Alta de visibilidades');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Modificacion de visibilidades');
+Insert into MASTERFILE.Funcionalidad_Rol (Funcionalidad_Rol_Desc) values ('Baja de visibilidades');
 
 --Carga de estados de publicacion
-Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Borrador");
-Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Activa");
-Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Pausada");
-Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values("Finalizada");
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values('Borrador');
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values('Activa');
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values('Pausada');
+Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values('Finalizada');
 
 --Carga de tipos de publicacion
-Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Compra Inmediata");
-Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values("Subasta");
+Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values('Compra Inmediata');
+Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values('Subasta');
 
 EXEC MASTERFILE.cargarFormaPago;
 EXEC MASTERFILE.migrarEmpresas;
@@ -566,3 +576,5 @@ Insert into MASTERFILE.Usuario(Usuario_Username,Usuario_Password,Usuario_Detalle
 
 end;
 go
+
+EXEC MASTERFILE.migracion;
