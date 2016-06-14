@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Model;
+using WindowsFormsApplication1.Menu;
 
 namespace WindowsFormsApplication1
 {
@@ -24,7 +25,7 @@ namespace WindowsFormsApplication1
         }
 
         public void LogInCompleted() {
-            logInControl.Visible = false;
+            //logInControl.Visible = false;
 
             if (/*preguntar si el usuario tiene mas de un rol*/true)
             {
@@ -33,6 +34,15 @@ namespace WindowsFormsApplication1
             else { 
                 //pushear vista main
             }
+            this.Hide();
+            Menu.Menu menu = new Menu.Menu();
+            menu.ShowDialog();
+            this.Close();
+        }
+
+        private void logInControl_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }

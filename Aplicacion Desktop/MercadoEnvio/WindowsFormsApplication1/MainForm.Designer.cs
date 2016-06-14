@@ -81,10 +81,11 @@
             // 
             // logInControl
             // 
-            this.logInControl.Location = new System.Drawing.Point(152, 50);
+            this.logInControl.Location = new System.Drawing.Point(79, 35);
             this.logInControl.Name = "logInControl";
             this.logInControl.Size = new System.Drawing.Size(199, 223);
             this.logInControl.TabIndex = 6;
+            this.logInControl.Load += new System.EventHandler(this.logInControl_Load);
             // 
             // MainForm
             // 

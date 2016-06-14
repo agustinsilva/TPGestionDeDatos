@@ -8,11 +8,17 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Model;
+using System.Data.SqlClient;
 
 namespace WindowsFormsApplication1
 {
     public partial class LogInControl : UserControl
     {
+        private string connectionString = @"Data Source=localhost\SQLSERVER2012;" +
+        "Initial Catalog=GD1C2016;" +
+        "User id=gd;" +
+        "Password=gd2016;";
+
         public LogInControl()
         {
             InitializeComponent();
@@ -27,17 +33,40 @@ namespace WindowsFormsApplication1
         {
             string usernameInput = textBox_username.Text;
             string passwordInput = textBox_password.Text;
-            Usuario usuario = checkUser(usernameInput, passwordInput);
-            if (usuario != null)
+            try
             {
-                LogInManager.usuarioLogueado = usuario;
+                SqlConnection con = new SqlConnection(connectionString);
+                SqlCommand cmd = con.CreateCommand();
+                cmd.CommandText = "MASTERFILE.loginUsuario";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("username", usernameInput);
+                cmd.Parameters.AddWithValue("password", passwordInput);
+                con.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        // Read your reader data
+                    }
+                }
+                con.Close();
                 pushNextScreen();
             }
-            else
+            catch
             {
-                failedTry(usernameInput);
-                showError();
+
             }
+            //Usuario usuario = checkUser(usernameInput, passwordInput);
+            //if (usuario != null)
+            //{
+            //    LogInManager.usuarioLogueado = usuario;
+            //    pushNextScreen();
+            //}
+            //else
+            //{
+            //    failedTry(usernameInput);
+            //    showError();
+            //}
         }
 
         private Usuario checkUser(string username, string password)

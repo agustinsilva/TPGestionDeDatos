@@ -27,7 +27,7 @@ Rubro_Desc_Larga nvarchar(255) NULL
 go
 
 create table MASTERFILE.Residencia (
-Residencia_Cod IDENTITY(1,1) numeric(18,0) PRIMARY KEY,
+Residencia_Cod numeric(18,0) IDENTITY(1,1)  PRIMARY KEY,
 Residencia_Dom_Calle nvarchar(255) NOT NULL,
 Residencia_Nro_Calle numeric(18,0) NOT NULL,
 Residencia_Piso numeric(18,0)  NULL,
@@ -38,7 +38,7 @@ Residencia_Localidad nvarchar(255) NULL
 go
 
 create table MASTERFILE.Detalle_Persona (
-Detalle_Cod numeric(18,0) PRIMARY KEY,
+Detalle_Cod numeric(18,0) IDENTITY(1,1) PRIMARY KEY,
 Detalle_Telefono nvarchar(50) NULL,
 Detalle_Mail nvarchar(255) NOT NULL,
 Detalle_Tipo_Persona nvarchar(50) NOT NULL,
@@ -150,9 +150,9 @@ go
 
 create table MASTERFILE.Empresa (
 Empresa_Razon_Social nvarchar(255),
-Empresa_Cuit nvarchar(255),
-Empresa_Nombre_Contacto nvarchar(255) NOT NULL,
-Empresa_Rubro_Cod numeric(18,0) NOT NULL FOREIGN KEY REFERENCES MASTERFILE.Rubro(Rubro_Cod),
+Empresa_Cuit nvarchar(50),
+Empresa_Nombre_Contacto nvarchar(255) NULL,
+Empresa_Rubro_Cod numeric(18,0)  NULL FOREIGN KEY REFERENCES MASTERFILE.Rubro(Rubro_Cod),
 Empresa_Detalle_Cod numeric(18,0) FOREIGN KEY REFERENCES MASTERFILE.Detalle_Persona(Detalle_Cod),
 primary key (Empresa_Razon_Social,Empresa_Cuit)
 );
@@ -218,7 +218,7 @@ return @valor;
 end;
 go
 
-
+--Funcion utilizada para obtener el mensaje de error.
 CREATE FUNCTION MASTERFILE.obtenerMensajeError (
 @idMensaje int)
 RETURNS nvarchar(255)
@@ -228,7 +228,6 @@ RETURN (SELECT TOP 1 convert(nvarchar(255), text) FROM sys.messages WHERE messag
 END
 ;
 GO
-
 
 create procedure MASTERFILE.obtenerCodigoRol(@nombreRol nvarchar(255),@codigoRol numeric(18,0) OUTPUT)
 as
@@ -260,20 +259,19 @@ end;
 go
 
 --Procedure para dar baja un rol
-create procedure MASTERFILE.darBajaRol
+create procedure MASTERFILE.darBajaRolPorNombre
 (@nombreRol nvarchar(255))
 as
 DECLARE @codigo numeric(18,0)
 begin
-
-EXEC MASTERFILE.obtenerCodigoRol(@nombreRol,@codigo);
+BEGIN TRANSACTION
+EXEC MASTERFILE.obtenerCodigoRol @nombreRol,@codigo OUTPUT;
 
 update MASTERFILE.Rol set Rol_Habilitado = 0 where Rol_Cod = @codigo; 
 
 delete from MASTERFILE.Perfil where Perfil_Rol_Cod = @codigo;
-
+commit;
 end;
-go
 
 --Procedure para dar alta un rol
 create procedure MASTERFILE.darAltaRol
@@ -286,16 +284,6 @@ commit;
 end;
 go
 
-
---Procedure para dar alta un rol
-create procedure MASTERFILE.modificarRol
-(@nombreRol nvarchar(255),@nombreNuevo nvarchar(255))
-as
-begin
-update MASTERFILE.Rol set Rol_Nombre = @nombreNuevo where Rol_Nombre = @nombreRol;
-end;
-go
-
 create procedure MASTERFILE.agregarFuncionalidadRol(@nombreRol nvarchar(255), @nombreFuncionalidad nvarchar(255) )
 as
 DECLARE @codigoRol numeric(18,0),
@@ -304,6 +292,30 @@ begin
 EXEC MASTERFILE.obtenerCodigoFuncionalidad @nombreFuncionalidad,@codigoFuncionalidad OUTPUT;
 EXEC MASTERFILE.obtenerCodigoRol @nombreRol,@codigoRol OUTPUT;
 INSERT INTO MASTERFILE.Accion_Rol(Accion_Rol_Rol_Cod,Accion_Rol_Func_Rol_Cod) values (@codigoRol,@codigoFuncionalidad);
+end;
+go
+
+create procedure MASTERFILE.modificarFuncionalidadRol(@nombreRol nvarchar(255), @nombreFuncionalidad nvarchar(255) )
+as
+DECLARE @codigoRol numeric(18,0),
+@codigoFuncionalidad numeric(18,0);
+begin
+EXEC MASTERFILE.obtenerCodigoFuncionalidad @nombreFuncionalidad,@codigoFuncionalidad OUTPUT;
+EXEC MASTERFILE.obtenerCodigoRol @nombreRol,@codigoRol OUTPUT;
+delete from MASTERFILE.Accion_Rol where Accion_Rol_Rol_Cod = @codigoRol;
+INSERT INTO MASTERFILE.Accion_Rol(Accion_Rol_Rol_Cod,Accion_Rol_Func_Rol_Cod) values (@codigoRol,@codigoFuncionalidad);
+end;
+go
+
+--Procedure para obtener funcionalidades y si estan asociadas al rol o no
+create procedure MASTERFILE.funcionalidadesAsociadas
+(@codigoRol numeric(18,0))
+as
+begin
+select FR.Funcionalidad_Rol_Desc, case when AR.Accion_Rol_Func_Rol_Cod is null then 0 else 1 end as Seleccionado
+from MASTERFILE.Funcionalidad_Rol as FR
+left outer join MASTERFILE.Accion_Rol as AR
+on FR.Funcionalidad_Rol_Cod = AR.Accion_Rol_Func_Rol_Cod and AR.Accion_Rol_Rol_Cod = @codigoRol ;
 end;
 go
 
@@ -335,16 +347,16 @@ declare @Razon_Social nvarchar(255),
 begin
 
 declare empresas cursor for
-	select DISTINCT Publ_Empresa_Razon_Social
-    Publ_Empresa_Cuit
-    Publ_Empresa_Fecha_Creacion
-    Publ_Empresa_Mail
-    Publ_Empresa_Dom_Calle
-    Publ_Empresa_Nro_Calle
-    Publ_Empresa_Piso
-    Publ_Empresa_Depto
+	select DISTINCT Publ_Empresa_Razon_Social,
+    Publ_Empresa_Cuit,
+    Publ_Empresa_Fecha_Creacion,
+    Publ_Empresa_Mail,
+    Publ_Empresa_Dom_Calle,
+    Publ_Empresa_Nro_Calle,
+    Publ_Empresa_Piso,
+    Publ_Empresa_Depto,
 	Publ_Empresa_Cod_Postal 
-	from MASTERFILE.gd_esquema.Maestra
+	from gd_esquema.Maestra
 	where Publ_Empresa_Cuit is not null;
 
 	open empresas
@@ -358,20 +370,20 @@ declare empresas cursor for
 		values(@Dom_Calle,@Nro_Calle,@Piso,@Depto,@Cod_Postal);
 		
 		--Obtengo ultimo id insertado en tabla residencia.
-		set ultimoId = SCOPE_IDENTITY();
+		set @ultimoId = SCOPE_IDENTITY();
 		
 		Insert into MASTERFILE.Detalle_Persona (Detalle_Mail,Detalle_Tipo_Persona,Detalle_Residencia_Cod)
-		values (@Mail,'Empresa',ultimoId);
+		values (@Mail,'Empresa',@ultimoId);
 		
 		--Obtengo ultimo id insertado en tabla Detalle_Persona.
-		set ultimoId = SCOPE_IDENTITY();
+		set @ultimoId = SCOPE_IDENTITY();
 		
 		Insert into MASTERFILE.Empresa (Empresa_Razon_Social,Empresa_Cuit,Empresa_Detalle_Cod) values (@Razon_Social,@Cuit,@ultimoId);
 		
-		set ultimoId = SCOPE_IDENTITY();
+		set @ultimoId = SCOPE_IDENTITY();
 		
 		--Se utiliza cuit como usuario y contraseña por ahora hasta encontrar algo mejor.
-		Insert into MASTERFILE.Usuario(Usuario_Username,Usuario_Password,Usuario_Detalle_Cod) values (@Cuit,@Cuit,ultimoId);
+		Insert into MASTERFILE.Usuario(Usuario_Username,Usuario_Password,Usuario_Detalle_Cod) values (@Cuit,@Cuit,@ultimoId);
 		
 		-- inserto el registro del cursor en variables
 		FETCH NEXT FROM empresas
@@ -385,20 +397,13 @@ declare empresas cursor for
 end;
 go
 
-CREATE PROCEDURE MASTERFILE.migrarVisibilidad
-as
-begin
-
-end;
-go;
-
 --Procedure encargado de migrar los usuarios de tipo Cliente
 create procedure MASTERFILE.migrarClientes
 as
 declare @Dni nvarchar(255),
 @Apellido nvarchar(255),
-@Nombre datetime,
-@Fecha_Nac nvarchar(255),
+@Nombre nvarchar(255),
+@Fecha_Nac datetime,
 @Mail nvarchar(255),
 @Dom_Calle nvarchar(255),
 @Nro_Calle numeric(18,0),
@@ -409,14 +414,14 @@ declare @Dni nvarchar(255),
 begin
 
 declare clientes cursor for
-	select Publ_Cli_Dni,Publ_Cli_Apellido,Publ_Cli_Nombre,Publ_Cli_Fecha_Nac,Publ_Cli_Mail,Publ_Cli_Depto,
+	select Publ_Cli_Dni,Publ_Cli_Apeliido,Publ_Cli_Nombre,Publ_Cli_Fecha_Nac,Publ_Cli_Mail,Publ_Cli_Depto,
 	Publ_Cli_Dom_Calle,Publ_Cli_Nro_Calle,Publ_Cli_Piso,Publ_Cli_Cod_Postal
-	from MASTERFILE.gd_esquema.Maestra
-	where Publ_Cli_Dni is not null;
+	from gd_esquema.Maestra
+	where Publ_Cli_Dni is not null
 	UNION
 	select Cli_Dni,Cli_Apeliido,Cli_Nombre,Cli_Fecha_Nac,Cli_Mail,Cli_Depto,
 	Cli_Dom_Calle,Cli_Nro_Calle,Cli_Piso,Cli_Cod_Postal
-	from MASTERFILE.gd_esquema.Maestra
+	from gd_esquema.Maestra
 	where Cli_Dni is not null;
 
 	open clientes
@@ -430,22 +435,22 @@ declare clientes cursor for
 		values(@Dom_Calle,@Nro_Calle,@Piso,@Depto,@Cod_Postal);
 		
 		--Obtengo ultimo id insertado en tabla residencia.
-		set ultimoId = SCOPE_IDENTITY();
+		set @ultimoId = SCOPE_IDENTITY();
 		
 		Insert into MASTERFILE.Detalle_Persona (Detalle_Mail,Detalle_Tipo_Persona,Detalle_Residencia_Cod)
-		values (@Mail,'Cliente',ultimoId);
+		values (@Mail,'Cliente',@ultimoId);
 		
 		--Obtengo ultimo id insertado en tabla Detalle_Persona.
-		set ultimoId = SCOPE_IDENTITY();
+		set @ultimoId = SCOPE_IDENTITY();
 		
 		Insert into MASTERFILE.Cliente (Cli_Dni,Cli_Tipo_Documento,Cli_Apellido,Cli_Nombre,Cli_Fecha_Nac,Cli_Detalle_Cod)
 		values (@Dni,'DNI',@Apellido,@Nombre,@Fecha_Nac,@ultimoId);
 		
-		set ultimoId = SCOPE_IDENTITY();
+		set @ultimoId = SCOPE_IDENTITY();
 		
 		--Se utiliza dni como usuario y contraseña por ahora hasta encontrar algo mejor.
 		Insert into MASTERFILE.Usuario(Usuario_Username,Usuario_Password,Usuario_Detalle_Cod) 
-		values (@Dni,@Dni,ultimoId);
+		values (@Dni,@Dni,@ultimoId);
 		
 		-- inserto el registro del cursor en variables
 		FETCH NEXT FROM clientes
@@ -459,6 +464,13 @@ declare clientes cursor for
 end;
 go
 
+CREATE PROCEDURE MASTERFILE.migrarVisibilidad
+as
+begin
+
+end;
+go;
+
 CREATE PROCEDURE MASTERFILE.loginUsuario (
 @username nvarchar(255),
 @password nvarchar(255) 
@@ -469,16 +481,23 @@ DECLARE
 @usuario_activo bit,
 @usuario_codigo numeric(18,0),
 @usuario_password nvarchar(255),
-@intentos_Fallidos numeric(1,0)
+@intentos_Fallidos numeric(1,0),
+@err_msg nvarchar(250)
 
 BEGIN TRY
 BEGIN TRANSACTION
 
-begin
+
 select @usuario_codigo=Usuario_Cod,@usuario_activo=Usuario_Activo,@usuario_habilitado=Usuario_Habilitado,
 @usuario_password=Usuario_Password,@intentos_Fallidos=Usuario_Intentos_Fallidos
 from MASTERFILE.Usuario
 where Usuario_Username = @username;
+
+if @usuario_codigo is null
+begin
+	SET @err_msg = 'El usuario que ingresó no existe.'
+	RAISERROR(@err_msg,14,1)
+end
 
 if @usuario_habilitado <> 1
 	begin
@@ -514,10 +533,10 @@ if @usuario_activo <> 1
 	end
 	
 	-- login realizado de forma correcta
-	update MASTERFILE.Usuario set Usuario_Intentos_Fallidos = 0 where Usuario_Cod = @usuario_codigo
+	update MASTERFILE.Usuario set Usuario_Intentos_Fallidos = 0 where Usuario_Cod = @usuario_codigo;
 	
-commit transaction
-end try
+COMMIT TRANSACTION
+END TRY
 begin catch
 	rollback transaction	
 	if (@@error = 0)
@@ -534,8 +553,7 @@ go
 create procedure MASTERFILE.migracion
 as
 begin
-
-EXEC MASTERFILE.cargarRubros;
+begin TRANSACTION
 
 --Carga de roles de usuarios
 Insert into MASTERFILE.Rol (Rol_Nombre) values ('Administrador');
@@ -566,15 +584,17 @@ Insert into MASTERFILE.Estado_Publicacion (EstadoPbl_descripcion) values('Finali
 Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values('Compra Inmediata');
 Insert into MASTERFILE.Tipo_Publicacion (EstadoPbl_descripcion) values('Subasta');
 
+--Crear usuario Admin
+Insert into MASTERFILE.Usuario(Usuario_Username,Usuario_Password,Usuario_Detalle_Cod) 
+		values ('Administrador','Administrador',NULL);
+		
+commit TRANSACTION;
+EXEC MASTERFILE.cargarRubros;
 EXEC MASTERFILE.cargarFormaPago;
 EXEC MASTERFILE.migrarEmpresas;
 EXEC MASTERFILE.migrarClientes;
 
---Crear usuario Admin
-Insert into MASTERFILE.Usuario(Usuario_Username,Usuario_Password,Usuario_Detalle_Cod) 
-		values ('Administrador','Administrador',NULL);
-
-end;
+end
 go
 
 EXEC MASTERFILE.migracion;

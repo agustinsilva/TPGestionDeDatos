@@ -14,7 +14,8 @@ namespace WindowsFormsApplication1.ABM_Rol
 {
     public partial class AltaRol : Form
     {
-        public string connectionString = @"Data Source=localhost\SQLSERVER2012;" +
+
+        private string connectionString = @"Data Source=localhost\SQLSERVER2012;" +
                 "Initial Catalog=GD1C2016;" +
                 "User id=gd;" +
                 "Password=gd2016;";
@@ -116,6 +117,11 @@ namespace WindowsFormsApplication1.ABM_Rol
         private void Funcionalidad_SelectedIndexChanged(object sender, EventArgs e)
         {
 
+        }
+
+        private void cancelarAlta_Click(object sender, EventArgs e)
+        {
+            this.Close();
         }
     }
 }

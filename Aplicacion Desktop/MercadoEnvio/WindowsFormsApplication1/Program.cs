@@ -18,6 +18,7 @@ namespace WindowsFormsApplication1
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());
             //Application.Run(new ABM_Rol.AltaRol());
+            //Application.Run(new ABM_Rol.BotoneraFuncionalidadRol());
         }
     }
 }

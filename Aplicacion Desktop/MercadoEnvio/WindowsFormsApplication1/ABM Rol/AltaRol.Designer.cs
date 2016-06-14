@@ -76,7 +76,7 @@
             // Funcionalidad
             // 
             this.Funcionalidad.FormattingEnabled = true;
-            this.Funcionalidad.Location = new System.Drawing.Point(15, 90);
+            this.Funcionalidad.Location = new System.Drawing.Point(12, 93);
             this.Funcionalidad.Name = "Funcionalidad";
             this.Funcionalidad.Size = new System.Drawing.Size(281, 139);
             this.Funcionalidad.TabIndex = 5;
